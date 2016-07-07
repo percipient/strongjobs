@@ -1,0 +1,26 @@
+# http://docs.aws.amazon.com/codedeploy/latest/userguide/app-spec-ref.html
+version: 0.0
+os: linux
+files:
+  - source: /
+    destination: /opt/strongjobs
+
+hooks:
+  BeforeInstall:
+    - location: scripts/before-install.sh
+      timeout: 60
+      runas: root
+  AfterInstall:
+    - location: scripts/after-install.sh
+      timeout: 60
+      runas: root
+  ApplicationStart:
+    - location: scripts/application-start.sh
+      timeout: 60
+      runas: strongjobs
+  ApplicationStop:
+    - location: scripts/application-stop.sh
+      timeout: 60
+      runas: strongjobs
+
+

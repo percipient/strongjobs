@@ -1,0 +1,7 @@
+TASKROOT=/opt/strongjobs/tasks
+
+# Run update-python-dependencies every 6 hours
+#0 */6 * * * $TASKROOT/update-dependencies/update-python-dependencies.sh
+
+# Run ssllabs.com scan once a day
+0 * * * * $TASKROOT/sslcheck/ssllabs.sh

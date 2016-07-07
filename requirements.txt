@@ -1,2 +1,6 @@
+# Build
 troposphere==1.6.0 # old skip
 awacs==0.5.0 # old
+
+# Deployed
+piprot==0.9.6 # new 
