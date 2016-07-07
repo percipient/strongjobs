@@ -87,3 +87,9 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# Vim swap files
+.*.s??
+
+# Generated json configuration
+cfn-strongjobs.json
