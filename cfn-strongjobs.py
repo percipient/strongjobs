@@ -11,11 +11,12 @@ from troposphere import (AWS_REGION,
                          Template,
                          codedeploy,)
 from troposphere.autoscaling import AutoScalingGroup, LaunchConfiguration, Tag
-from troposphere.policies import UpdatePolicy, AutoScalingRollingUpdate
 from troposphere.constants import (IMAGE_ID,
                                    SECURITY_GROUP_ID,
                                    STRING,
                                    SUBNET_ID,)
+from troposphere.policies import AutoScalingRollingUpdate, UpdatePolicy
+from troposphere.s3 import Bucket, Private
 
 
 t = Template()
@@ -125,6 +126,13 @@ strongjobsCodeDeploy = t.add_resource(codedeploy.DeploymentGroup(
     ApplicationName=Ref(strongjobsApplication),
     AutoScalingGroups=[Ref(autoScalingGroupStrongjobs)],
     ServiceRoleArn=Ref(serviceRole),
+))
+
+# S3 bucket
+s3bucket = t.add_resource(Bucket(
+    "StrongjobsS3Bucket",
+    BucketName="strongjobs",
+    AccessControl=Private,
 ))
 
 print(t.to_json())
