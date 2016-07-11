@@ -2,6 +2,9 @@
 
 from datetime import datetime
 
+import awacs.s3
+import awacs.aws as aws
+import awacs.sts as sts
 from troposphere import (AWS_REGION,
                          AWS_STACK_NAME,
                          Base64,
@@ -10,13 +13,14 @@ from troposphere import (AWS_REGION,
                          Ref,
                          Template,
                          codedeploy,)
-from troposphere.autoscaling import AutoScalingGroup, LaunchConfiguration, Tag
+import troposphere.autoscaling as autoscaling
 from troposphere.constants import (IMAGE_ID,
                                    SECURITY_GROUP_ID,
                                    STRING,
                                    SUBNET_ID,)
-from troposphere.policies import AutoScalingRollingUpdate, UpdatePolicy
-from troposphere.s3 import Bucket, Private
+import troposphere.iam as iam
+import troposphere.policies as policies
+import troposphere.s3 as s3
 
 
 t = Template()
@@ -42,8 +46,8 @@ imageId = t.add_parameter(Parameter(
     Type=IMAGE_ID,
     ConstraintDescription="Ubuntu 64-bit is reasonable",
     #Default="ami-b9ff39d9",  # Ubuntu 16 LTS--update when CodeDeploy in s3
-                              # catches up to git master (Ruby version
-                              # problems)
+                              # catches up to git and fixes Ruby version
+                              # problems
     Default="ami-65579105",  # Ubuntu 14 LTS
 ))
 subnetId = t.add_parameter(Parameter(
@@ -52,19 +56,43 @@ subnetId = t.add_parameter(Parameter(
     Type=SUBNET_ID,
     ConstraintDescription="Should be a private subnet.",
 ))
-IAMInstanceProfile = t.add_parameter(Parameter(
-    "IAMInstanceProfile",
-    Description="IAM Instance Profile",
-    Type=STRING,
+
+# S3 bucket
+s3bucket = t.add_resource(s3.Bucket(
+    "StrongjobsS3Bucket",
+    BucketName="strongjobs",
+    AccessControl=s3.Private,
 ))
-serviceRole = t.add_parameter(Parameter(
-    "serviceRole",
-    Description="Service Role",
-    Type=STRING,
+
+# Access management things
+serviceRole = t.add_resource(iam.Role(
+    "StrongjobsServiceRole",
+    AssumeRolePolicyDocument=aws.Policy(
+        Statement=[
+            aws.Statement(
+                Effect=aws.Allow,
+                Action=[sts.AssumeRole],
+                Principal=aws.Principal("Service",
+                                        ["codedeploy.amazonaws.com"])
+            ),
+            aws.Statement(
+                Effect=aws.Allow,
+                Action=[sts.AssumeRole],
+                Principal=aws.Principal("Service", ["ec2.amazonaws.com"])
+            ),
+        ],
+    ),
+    ManagedPolicyArns=["arn:aws:iam::aws:policy/AmazonS3FullAccess",
+                       "arn:aws:iam::aws:policy/service-role/"
+                       "AWSCodeDeployRole"]
+))
+IAMInstanceProfile = t.add_resource(iam.InstanceProfile(
+    "StrongjobsInstanceProfile",
+    Roles=[Ref(serviceRole)]
 ))
 
 # Launch configuration
-launchConfiguration = t.add_resource(LaunchConfiguration(
+launchConfiguration = t.add_resource(autoscaling.LaunchConfiguration(
     "StrongjobsLaunchConfig",
     ImageId=Ref(imageId),
     SecurityGroups=[Ref(securityGroup)],
@@ -93,10 +121,10 @@ launchConfiguration = t.add_resource(LaunchConfiguration(
 ))
 
 # AutoScaling Group
-autoScalingGroupStrongjobs = t.add_resource(AutoScalingGroup(
+autoScalingGroupStrongjobs = t.add_resource(autoscaling.AutoScalingGroup(
     "StrongjobsGroup",
-    UpdatePolicy=UpdatePolicy(
-        AutoScalingRollingUpdate=AutoScalingRollingUpdate(
+    UpdatePolicy=policies.UpdatePolicy(
+        AutoScalingRollingUpdate=policies.AutoScalingRollingUpdate(
             MinInstancesInService="0",
             MaxBatchSize='1',
         )
@@ -107,11 +135,11 @@ autoScalingGroupStrongjobs = t.add_resource(AutoScalingGroup(
     DesiredCapacity="1",
     MaxSize="1",
     Tags=[
-        Tag("environment", Ref(AWS_STACK_NAME), "true"),
-        Tag("Name",
-            Join("-", [Ref(AWS_STACK_NAME), "asg-strongjobs"]),
-            "true"),
-        Tag("application", "strongjobs", "true"),
+        autoscaling.Tag("environment", Ref(AWS_STACK_NAME), "true"),
+        autoscaling.Tag("Name",
+                        Join("-", [Ref(AWS_STACK_NAME), "asg-strongjobs"]),
+                        "true"),
+        autoscaling.Tag("application", "strongjobs", "true"),
     ],
 ))
 
@@ -125,14 +153,10 @@ strongjobsCodeDeploy = t.add_resource(codedeploy.DeploymentGroup(
     DeploymentGroupName='strongjobs',
     ApplicationName=Ref(strongjobsApplication),
     AutoScalingGroups=[Ref(autoScalingGroupStrongjobs)],
-    ServiceRoleArn=Ref(serviceRole),
-))
-
-# S3 bucket
-s3bucket = t.add_resource(Bucket(
-    "StrongjobsS3Bucket",
-    BucketName="strongjobs",
-    AccessControl=Private,
+    ServiceRoleArn=Join("", ["arn:aws:iam::",
+                             Ref("AWS::AccountId"),
+                             ":role/", Ref(serviceRole)
+                             ]),
 ))
 
 print(t.to_json())
