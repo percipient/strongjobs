@@ -11,3 +11,9 @@ passphrase) for pushing branches.
 It's recommended to run from the included crontab. Alternatively, run the
 script from a POSIX shell. It will clone repositories to the `strongjobs` user
 home directory.
+### Requirements files
+This uses [piprot](https://github.com/sesh/piprot) to check dependency
+rottenness. It supports all types of pinning and comments (`#`). This script
+does add one additional bit of semantics: if you want to skip upgrading a
+version of a package, add the string `skip` to a comment on the same line as
+the package.
