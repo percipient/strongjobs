@@ -1,0 +1,11 @@
+# Requirements for deploying and managing from host machine
+
+# AWS commands
+boto3==1.3.1
+
+# CloudFormation generation
+awacs==0.6.0
+troposphere==1.7.0
+
+# Management tasks
+invoke==0.13.0

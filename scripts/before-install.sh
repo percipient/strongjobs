@@ -11,7 +11,7 @@ useradd -m strongjobs || true
 # Example: us-west-2c --> us-west-2
 readonly REGION=$(ec2metadata --availability-zone | grep -o '^.*[0-9]\+')
 # Sync the environment variables (creds and configurations) down
-aws --region=$REGION s3 cp s3://strongjobs/strongjobs.env /opt/strongjobs/.env
+aws --region=$REGION s3 cp s3://strongjobs/conf.env /opt/strongjobs/.env
 
 # Set up the ssh key for github
 . /opt/strongjobs/.env  # Needs to be done after aws s3 sync
