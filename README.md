@@ -22,10 +22,10 @@ tasks are specified in `[]`
 .
 ├── README.md -- You're reading this
 ├── appspec.yml -- Specification for CodeDeploy
-├── <CloudFormation.json> -- Specification for CloudFormation.
-│                         Create from output of CloudFormation.py
-├── CloudFormation.py -- Script to output CloudFormation template
-│                        using the Troposphere library, run locally
+├── <CloudFormation.json> -- Specification for CloudFormation. Create from
+│                         output of CloudFormation.py
+├── CloudFormation.py -- Script to output CloudFormation template using the
+│                     Troposphere library, run locally
 ├── <conf.env> -- Create from template in sample.env
 ├── crontab -- crontab to run jobs
 ├── requirements.txt -- Python requirements file
@@ -38,9 +38,13 @@ tasks are specified in `[]`
 │   └── before-install.sh -- Runs before this repo is copied down
 ├── tasks.py -- Management tasks file for invoke, run locally
 └── jobs/ -- Where your remote jobs will live
-    ├── sslcheck/ -- Jobs to perform checks on TLS certificates and configs
+    ├── sslcheck/ -- Jobs to perform checks on TLS certificates and configs and
+    │   │         create Github issues when they fail
     │   ├── README.md -- Info
-    │   └── <TODO>
+    │   ├── certexpiry.py -- Check certs for nearing expiration
+    │   ├── httpobs.py -- Check for score falling on Mozilla Observatory
+    │   ├── ssllabs.py -- Check for grade falling on SSL Labs
+    │   └── utils.py -- Helper Python functions
     └── update-dependencies/ -- Jobs to check and update code dependencies
         ├── README.md -- Info
         └── update-python-dependencies.sh -- Create pull requests for outdated 
