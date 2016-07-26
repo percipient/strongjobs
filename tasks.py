@@ -20,7 +20,7 @@ def clientWrapper(service, region=None):
                   "http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-"
                   "getting-started.html for ways that you can set it "
                   "globally, or pass 'region' as an argument to this task.")
-            return 1
+            raise SystemExit(1)
     return cl
 
 
@@ -94,16 +94,99 @@ def makeTemplate(ctx):
 
 
 @task(pre=[makeTemplate])
-def create(ctx, wait=True):
-    """Create new CloudFormation stack."""
-    raise NotImplementedError
+def create(ctx,
+           region=None,
+           subnetId=None,
+           securityGroup="sg-51530134",
+           wait=True):
+    """Create new CloudFormation stack.
+
+    arguments:
+    - region: AWS region name. Not required if specified in environment
+    - subnetId: AWS subnet. If not specified, pick one for you
+    - securityGroup: AWS SecurityGroup. Default is "default", and will
+      fail if you have renamed or deleted it
+    - wait: wait until the CloudFormation stack creation finishes
+    """
+    ec2 = clientWrapper('ec2', region)
+    if not subnetId:
+        subnetId = ec2.describe_subnets()["Subnets"][0]["SubnetId"]
+        print("Subnet ID not passed, so selecting first one: " + subnetId)
+    with open("CloudFormation.json", "r") as f:
+        cfTemplate = f.read()
+    cf = clientWrapper('cloudformation', region)
+    res = cf.create_stack(
+        StackName='Strongjobs',
+        TemplateBody=cfTemplate,
+        Parameters=[
+            {
+                'ParameterKey': 'SecurityGroup',
+                'ParameterValue': securityGroup,
+            },
+            {
+                'ParameterKey': 'SubnetId',
+                'ParameterValue': subnetId,
+            },
+        ],
+        Capabilities=['CAPABILITY_IAM'],
+    )
+    stackId = res["StackId"]
+    print("CloudFormation stack update started with id: " + stackId)
+    waiter = cf.get_waiter('stack_create_complete')
+    waiter.wait(StackName=stackId)
+    print("CloudFormation create completed")
 
 
 @task(default=True, pre=[makeTemplate])
-def update(ctx, region=None, subnetId=None, wait=True):
-    """Update CloudFormation stack."""
-    raise NotImplementedError
+def update(ctx,
+           region=None,
+           subnetId=None,
+           securityGroup="sg-51530134",
+           wait=True):
+    """Update CloudFormation stack.
 
+    arguments:
+    - region: AWS region name. Not required if specified in environment
+    - subnetId: AWS subnet. If not specified, this will pick one for you
+    - securityGroup: AWS SecurityGroup. Default is "default", and will
+      fail if you have renamed or deleted it
+    - wait: wait until the CloudFormation stack creation finishes
+    """
+    ec2 = clientWrapper('ec2', region)
+    if not subnetId:
+        subnetId = ec2.describe_subnets()["Subnets"][0]["SubnetId"]
+        print("Subnet ID not passed, so selecting first one: " + subnetId)
+    with open("CloudFormation.json", "r") as f:
+        cfTemplate = f.read()
+    cf = clientWrapper('cloudformation', region)
+    res = cf.update_stack(
+        StackName='Strongjobs',
+        TemplateBody=cfTemplate,
+        UsePreviousTemplate=False,
+        Capabilities=['CAPABILITY_IAM'],
+        Parameters=[
+            {
+                'ParameterKey': 'SecurityGroup',
+                'ParameterValue': securityGroup,
+            },
+            {
+                'ParameterKey': 'SubnetId',
+                'ParameterValue': subnetId,
+                # I'm not sure why this shouldn't work here, but it gives the
+                # error: "botocore.exceptions.ClientError: An error occurred
+                # (ValidationError) when calling the UpdateStack operation:
+                # Invalid input for parameter key subnetId. Cannot specify
+                # usePreviousValue as true for a parameter key not in the
+                # previous template" FIXME
+                #'UsePreviousValue': True
+            },
+        ],
+    )
+    stackId = res["StackId"]
+    print("CloudFormation stack update started with id: " + stackId)
+    waiter = cf.get_waiter('stack_create_complete')
+    waiter.wait(StackName=stackId)
+    print("CloudFormation update completed")
 
 cfCollection = Collection("cf", makeTemplate, create, update)
 ns.add_collection(cfCollection)
@@ -127,12 +210,10 @@ def push(ctx):
 
 
 @task(default=True, pre=[pull], post=[push])
-def edit(ctx, pre=[pull], post=[push]):
+def edit(ctx):
     """Pull s3 env down, edit it, and push it back up."""
-    print("Launching vim")
     # -i NONE means to not use a viminfo, to minimize artifacts left
     run("vim -i NONE conf.env", pty=True)
-    print("Exited vim")
 
 s3Collection = Collection("s3", edit, push, pull)
 ns.add_collection(s3Collection)

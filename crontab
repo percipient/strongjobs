@@ -1,4 +1,4 @@
-TASKROOT=/opt/strongjobs/tasks
+TASKROOT=/opt/strongjobs/jobs
 
 # Run update-python-dependencies every 6 hours
 #0 */6 * * * $TASKROOT/update-dependencies/update-python-dependencies.sh

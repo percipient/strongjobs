@@ -91,5 +91,9 @@ ENV/
 # Vim swap files
 .*.s??
 
+
 # Generated json configuration
 cfn-strongjobs.json
+
+# Credentials
+conf.env
