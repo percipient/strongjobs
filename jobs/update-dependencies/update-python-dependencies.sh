@@ -25,6 +25,13 @@ updatePackage() {
 	# Add, commit, and (try to) push the change
 	git add "$reqFile"
 	git commit -m "Update $package to $version in $reqFile" > /dev/null 2>&1
+	# Pushing can succeed or fail depending on whether or not an identically
+	# named branch exists. This is all of the duplicate-checking done; it will
+	# create a pull request exactly once per package version per requirements
+	# file, but it will continue creating pull requests for new versions,
+	# regardless of the status of the previous pull requests. To stop creating
+	# new pull requests, add "skip" to a comment in the requirements file on
+	# the same line as the package.
 	if git push origin "$branchname" > /dev/null 2>&1; then
 		# If the push succeeds, submit a pull request
 		echo "Pushed branch successfully"
