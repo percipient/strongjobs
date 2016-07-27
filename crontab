@@ -1,9 +1,17 @@
+# Where the jobs are located
 TASKROOT=/opt/strongjobs/jobs
 
-# Run update-python-dependencies every 6 hours
-0 */6 * * * $TASKROOT/update-dependencies/update-python-dependencies.sh
+# Wrapper to send notifications to Slack
+# Usage: $WRAPPER <condition> <name> <executable>
+# See script for more details
+WRAPPER=/opt/strongjobs/slackwrapper.sh
 
-# Run SSL checkers once a week
-0 0 * * 0 $TASKROOT/sslcheck/certexpiry.py
-0 0 * * 0 $TASKROOT/sslcheck/httpobs.py
-0 0 * * 0 $TASKROOT/sslcheck/ssllabs.py
+# Run update-python-dependencies every 6 hours
+0 */6 * * * $WRAPPER fail "Python dependencies" $TASKROOT/update-dependencies/update-python-dependencies.sh
+
+# Run cert expiry checker one a day
+0 0 * * * $WRAPPER fail "Certificate Expiration" $TASKROOT/sslcheck/certexpiry.py
+
+# Run SSL config checkers once a week
+0 0 * * 0 $WRAPPER all "Mozilla Observatory" $TASKROOT/sslcheck/httpobs.py
+0 0 * * 0 $WRAPPER all "SSL Labs" $TASKROOT/sslcheck/ssllabs.py
