@@ -10,28 +10,29 @@ from OpenSSL import SSL
 
 from utils import createIssue
 
-EXPIREDAYS = 7
+EXPIREDAYS = 90
 
 
 def checkHost(hostName):
+    """Get cert on host and create issue if nearing expiration."""
     print("Checking " + hostName)
+    # Initialize openssl context
     ctx = SSL.Context(SSL.TLSv1_2_METHOD)
-    # ctx.set_verify(SSL.VERIFY_PEER | SSL.VERIFY_FAIL_IF_NO_PEER_CERT,
-    #                 pyopenssl_check_callback)
+    # Connect to server
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sslSock = SSL.Connection(ctx, sock)
-    sslSock.connect((hostName, 443))  # TODO
-    sslSock.set_connect_state()
-    sslSock.set_tlsext_host_name(hostName)
+    sslSock.connect((hostName, 443))
+    # Extract the certificate from openssl
     sslSock.do_handshake()
     cert = sslSock.get_peer_certificate()
+    # Clean up
     sslSock.shutdown()
     sock.close()
 
     daysLeft = int((datetime.datetime.strptime(cert.get_notAfter(),
-                                               "%Y%m%d%H%M%SZ") - \
+                                               "%Y%m%d%H%M%SZ") -
                     datetime.datetime.utcnow()).days)
-    print("Certificate for %s has %d days until expiring" % \
+    print("Certificate for %s has %d days until expiring" %
           (hostName, daysLeft))
 
     # The cert is close to expiration, so we create a GitHub issue
@@ -40,6 +41,15 @@ def checkHost(hostName):
         createIssue(env["ISSUEREPOPATH"],
                     env["OAUTHTOKEN"],
                     "Certificate for " + hostName + " is nearing expiration",
+                    "It has %d days until it expires." % daysLeft)
+
+    # The cert is even closer to expiration, so we create a duplicate, more
+    # emphatic GitHub issue
+    if daysLeft <= EXPIREDAYS * 2 / 3:
+        print(hostName + " is very close to expiring")
+        createIssue(env["ISSUEREPOPATH"],
+                    env["OAUTHTOKEN"],
+                    "CERTIFICATE FOR " + hostName + " IS NEARING EXPIRATION!",
                     "It has %d days until it expires." % daysLeft)
 
 
