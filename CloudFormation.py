@@ -2,7 +2,6 @@
 
 from datetime import datetime
 
-import awacs.s3
 import awacs.aws as aws
 import awacs.sts as sts
 from troposphere import (AWS_REGION,
@@ -16,11 +15,12 @@ from troposphere import (AWS_REGION,
 import troposphere.autoscaling as autoscaling
 from troposphere.constants import (IMAGE_ID,
                                    SECURITY_GROUP_ID,
-                                   STRING,
                                    SUBNET_ID,)
 import troposphere.iam as iam
 import troposphere.policies as policies
 import troposphere.s3 as s3
+
+OUTPUTFILE = "CloudFormation.json"
 
 
 t = Template()
@@ -38,7 +38,7 @@ securityGroup = t.add_parameter(Parameter(
     Type=SECURITY_GROUP_ID,
     ConstraintDescription="The id of the default security group in this "
                           "region to enable communication between instances",
-    Default="default"
+    Default="sg-51530134"
 ))
 imageId = t.add_parameter(Parameter(
     "ImageId",
@@ -159,4 +159,6 @@ strongjobsCodeDeploy = t.add_resource(codedeploy.DeploymentGroup(
                              ]),
 ))
 
-print(t.to_json())
+with open(OUTPUTFILE, "w") as f:
+    f.write(t.to_json())
+print("Wrote " + OUTPUTFILE)
