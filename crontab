@@ -2,3 +2,8 @@ TASKROOT=/opt/strongjobs/jobs
 
 # Run update-python-dependencies every 6 hours
 0 */6 * * * $TASKROOT/update-dependencies/update-python-dependencies.sh
+
+# Run SSL checkers once a week
+0 0 * * 0 $TASKROOT/sslcheck/certexpiry.py
+0 0 * * 0 $TASKROOT/sslcheck/httpobs.py
+0 0 * * 0 $TASKROOT/sslcheck/ssllabs.py
