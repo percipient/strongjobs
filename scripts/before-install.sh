@@ -1,6 +1,7 @@
 #!/bin/sh
 
 # Install dependencies
+apt-get update
 apt-get -y install git curl python python-pip
 
 # Create user and home dir (/home/strongjobs/)
