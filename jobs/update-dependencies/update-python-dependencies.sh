@@ -63,7 +63,7 @@ updateRepo() {
 	then
 		mkdir -p "$HOME/$repoPath"
 		cd "$HOME/$repoPath" 
-		git clone --depth=1 "ssh://github.com/$repoPath" . 2> /dev/null
+		git clone --depth=1 "ssh://git@github.com/$repoPath" . 2> /dev/null
 	fi
 	cd "$HOME/$repoPath"
 

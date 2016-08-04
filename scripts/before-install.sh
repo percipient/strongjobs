@@ -5,7 +5,7 @@ apt-get update
 apt-get -y install git curl python python-pip
 
 # Create user and home dir (/home/strongjobs/)
-useradd -m strongjobs || true
+useradd -m -G adm strongjobs || true
 
 # I don't know a way to get just the region, so take the availability zone up
 # until the end of the numbers, leaving off the zone letter at the end.
