@@ -1,3 +1,6 @@
+# Ensure pip-installed packages are in the PATH
+PATH=/usr/local/bin:/usr/bin:/bin
+
 # Where the jobs are located
 TASKROOT=/opt/strongjobs/jobs
 

@@ -74,8 +74,12 @@ main() {
 
 	# Run the job
 	set +e
-	$executable # Obviously don't run this with untrusted input
+	# Obviously don't run this with untrusted input
+	output=$($executable 2>&1)
+	# Get exit code
 	errno=$?
+	# Log output to syslog
+	echo "$errno $output" | logger -t strongjobs -p cron.debug
 	set -e
 
 	# Notify based on condition
