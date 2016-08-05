@@ -3,7 +3,7 @@
 # Install dependencies
 apt-get update
 apt-get -y upgrade
-apt-get -y install git curl python python-pip
+apt-get -y install git curl python python-pip libffi-dev libssl-dev python-dev
 
 # Create user and home dir (/home/strongjobs/)
 useradd -m -G adm strongjobs || true
