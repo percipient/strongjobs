@@ -4,7 +4,7 @@
 piprot==0.9.6
 
 # Using APIs
-requests==2.10.0
+requests==2.11.0
 
 # Checking ssl expiration
 pyOpenSSL==16.0.0
