@@ -9,14 +9,37 @@ tasks are specified in `[]`
    `[cf.make]`
 2. Upload the json file to CloudFormation, specifying parameters. The defaults
    should be ok, and subnet doesn't matter. `[cf.create]`
-3. Configure `conf.env` (see `sample.env`).
-4. Link your GitHub account to CodeDeploy
-   (http://docs.aws.amazon.com/codedeploy/latest/userguide/github-integ.html).
+3. Configure `conf.env` (see [sample.env](sample.env)).
+4. Link your GitHub account to CodeDeploy (see
+   [AWS docs](
+http://docs.aws.amazon.com/codedeploy/latest/userguide/github-integ.html)).
 
 ## Regular deployment
 1. Upload `conf.env` to `s3://strongjobs/strongjobs.env`. `[s3.push]` or
    `[s3.edit]`
 2. Create deployment through CodeDeploy (make sure you've pushed). `[install]`
+
+## Adding a new job
+1. Add your jobs to a directory in [jobs/](jobs/).
+2. Add job to [crontab](crontab).
+  - Specify how often it should run.
+  - Specify when it should create slack alerts.
+
+Depending on your requirements, you might need to:
+- Add secrets or configuration to `conf.env` (and add examples to
+  [sample.env](sample.env)).
+- Add Python dependencies to [requirements.txt](requirements.txt).
+- Add system-level dependencies (e.g. Ubuntu packages) to
+  [scripts/before-install.sh](scripts/before-install.sh).
+- Add documentation in your job directory and below in the directory layout.
+
+Of course, you'll need to push this and do a CodeDeploy `[install]` before it
+starts running.
+
+## Disabling a job
+The easiest way is to comment it out in the [crontab](crontab). To remove all
+traces, follow the instructions for adding a new job, doing the opposite.
+Again, you'll have to push and CodeDeploy `[install]` before the job will stop.
 
 ## Directory layout
 ```
