@@ -5,7 +5,7 @@ built-in jobs, but it's intended to be modified with whatever jobs you will
 find useful.
 
 Management on the host can use [invoke](http://www.pyinvoke.org/). Invoke tasks
-are specified in `[]`
+are specified in `[]`.
 
 ## Customizing
 
@@ -94,7 +94,7 @@ Again, you'll have to push and CodeDeploy `[install]` before the job will stop.
 2. Fix a bug or add a new job (see [Adding a new
    job](https://github.com/percipient/strongjobs#adding-a-new-job)).
 3. Make sure you've added documentation.
-4. Submit a pull request
+4. Submit a pull request.
 
 If you feel uncomfortable or uncertain about an issue or your changes, feel
 free to email support@strongarm.io and we will gladly help you.
