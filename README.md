@@ -1,4 +1,11 @@
-## About
+## strongjobs
+
+strongjobs is Apache2 licensed software for engineering teams to schedule
+repetitive tasks in AWS. For example, monitoring dependency updates, certificate
+expiration, and more.
+
+## Background
+
 This repo is Strongarm's solution to a running a modern and easily updatable
 job-scheduler on AWS EC2. Simply, it's cron in *the cloud*. It includes some
 built-in jobs, but it's intended to be modified with whatever jobs you will
@@ -74,7 +81,7 @@ Again, you'll have to push and CodeDeploy `[install]` before the job will stop.
 │   │   └── utils.py -- Helper Python functions
 │   └── update-dependencies/ -- Jobs to check and update code dependencies
 │       ├── README.md -- Info
-│       └── update-python-dependencies.sh -- Create pull requests for outdated 
+│       └── update-python-dependencies.sh -- Create pull requests for outdated
 │                                         Python dependencies across all your
 │                                         repos.
 ├── requirements.txt -- Python requirements file for the ec2 instance
