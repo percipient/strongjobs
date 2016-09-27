@@ -1,7 +1,7 @@
 # Requirements file for the production ec2 instance
 
 # Checking Python dependencies
-piprot==0.9.6
+piprot==0.9.7
 
 # Using APIs
 requests==2.11.1
