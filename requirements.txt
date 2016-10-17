@@ -7,4 +7,4 @@ piprot==0.9.7
 requests==2.11.1
 
 # Checking ssl expiration
-pyOpenSSL==16.1.0
+pyOpenSSL==16.2.0
