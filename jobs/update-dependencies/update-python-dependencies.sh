@@ -21,7 +21,7 @@ updatePackage() {
 	git checkout -b "$branchname" 2> /dev/null
 	# Make the upgrade in the file, pinning the package to the new version,
 	# leaving whitespace (spaces and tabs) and comments alone
-	sed -i.bak -e "s/^$package[^ #	]*/$package==$version/" "$reqFile"
+	sed -i.bak -e "s/^$package==[^ #	]*/$package==$version/" "$reqFile"
 	# Add, commit, and (try to) push the change
 	git add "$reqFile"
 	git commit -m "Update $package to $version in $reqFile" > /dev/null 2>&1
@@ -102,7 +102,7 @@ updateRepo() {
 			fi
 			# Skip lines marked with a comment containing "skip"
 			# Otherwise, update the package in the current file
-			if grep "^$package.*#.*skip" "$reqFile" > /dev/null;
+			if grep "^$package==.*#.*skip" "$reqFile" > /dev/null;
 			then
 				echo ">Skipping $package"
 			else
