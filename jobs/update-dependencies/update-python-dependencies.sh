@@ -6,7 +6,7 @@
 
 set -euf
 
-readonly REQUIREMENTFILES="requirements.txt debug-requirements.txt dev-requirements.txt"
+readonly REQUIREMENTFILES="requirements.txt requirements-debug.txt requirements-dev.txt requirements-base.txt"
 
 updatePackage() {
 	repoPath=$1
