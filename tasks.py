@@ -32,12 +32,8 @@ def clean(ctx):
     run("find . \( -name '__pycache__' -o -name '*.pyc' \) -print -delete")
 
 
-@task(aliases=['code', 'install'])
-def codeDeploy(ctx,
-               region=None,
-               repo="percipient/strongjobs",
-               commitId="newest",
-               wait=True):
+@task()
+def deploy(ctx, region=None, repo="percipient/strongjobs", commitId=None, wait=True):
     """Deploy new code at specified revision to instance.
 
     arguments:
@@ -46,7 +42,7 @@ def codeDeploy(ctx,
     - wait: wait until the CodeDeploy finishes
     """
     codedeploy = clientWrapper("codedeploy", region)
-    if commitId == "newest":
+    if commitId is None:
         commitId = run("git rev-list --max-count=1 HEAD",
                        hide=True).stdout.strip()
         print("Got newest commitId as " + commitId)
@@ -83,22 +79,18 @@ def codeDeploy(ctx,
         print("\nDeploy Failed")
         print(info)
 
-ns = Collection(clean, codeDeploy)
+ns = Collection(clean, deploy)
 
 
 # cf (CloudFormation) namespace
-@task(aliases=['make'], pre=[clean])
+@task(pre=[clean])
 def makeTemplate(ctx):
     """Make CloudFormation template."""
     import CloudFormation  # pylint: disable=unused-import
 
 
 @task(pre=[makeTemplate])
-def create(ctx,
-           region=None,
-           subnetId=None,
-           securityGroup="sg-51530134",
-           wait=True):
+def create(ctx, region=None, subnetId=None, securityGroup="sg-51530134", wait=True):
     """Create new CloudFormation stack.
 
     arguments:
@@ -138,11 +130,7 @@ def create(ctx,
 
 
 @task(default=True, pre=[makeTemplate])
-def update(ctx,
-           region=None,
-           subnetId=None,
-           securityGroup="sg-51530134",
-           wait=True):
+def update(ctx, region=None, subnetId=None, securityGroup="sg-51530134", wait=True):
     """Update CloudFormation stack.
 
     arguments:
@@ -193,7 +181,7 @@ ns.add_collection(cfCollection)
 
 
 # s3 namespace
-@task(aliases=["get"])
+@task()
 def pull(ctx):
     """Pull s3 env down."""
     s3 = boto3.client('s3')
@@ -201,7 +189,7 @@ def pull(ctx):
     print("conf.env downloaded")
 
 
-@task(aliases=["set"])
+@task()
 def push(ctx):
     """Push s3 env up."""
     s3 = boto3.client('s3')
@@ -209,11 +197,5 @@ def push(ctx):
     print("conf.env uploaded")
 
 
-@task(default=True, pre=[pull], post=[push])
-def edit(ctx):
-    """Pull s3 env down, edit it, and push it back up."""
-    # -i NONE means to not use a viminfo, to minimize artifacts left
-    run("vim -i NONE conf.env", pty=True)
-
-s3Collection = Collection("s3", edit, push, pull)
+s3Collection = Collection("s3", push, pull)
 ns.add_collection(s3Collection)
