@@ -21,15 +21,6 @@ class RunError(RuntimeError):
     pass
 
 
-def run(*args):
-    proc = Popen(args, stdout=PIPE, stderr=PIPE)
-    proc.wait()
-    if proc.returncode is not 0:
-        raise RunError(proc.stderr.read())
-
-    return proc.stdout.read()
-
-
 class GitRepo(object):
     def __init__(self, root_path, repo_path):
         self.path = repo_path
@@ -37,12 +28,19 @@ class GitRepo(object):
 
         # Clone the repo if it isn't there.
         if not path.exists(self.directory):
-            run('git', 'clone', '--depth=1',
-                'ssh://git@github.com/' + self.path,
-                self.directory)
+            proc = Popen(['git', 'clone', 'ssh://git@github.com/' + self.path, self.directory], stdout=PIPE, stderr=PIPE)
+            proc.wait()
+            if proc.returncode is not 0:
+                raise RunError(proc.stderr.read())
 
     def run(self, *args):
-        return run('git', '--git-dir=' + self.directory, *args)
+        args = ('git', '--git-dir=' + path.join(self.directory, '.git'), '--work-tree=' + self.directory) + args
+        proc = Popen(args, cwd=self.directory, stdout=PIPE, stderr=PIPE)
+        proc.wait()
+        if proc.returncode is not 0:
+            raise RunError(proc.stderr.read())
+
+        return proc.stdout.read()
 
     def update(self):
         self.run('reset', '--hard')
@@ -53,6 +51,9 @@ class GitRepo(object):
 
 def create_pull_request(repo_path, token, title, branch_name):
     """Create a Pull Request."""
+    print("FOO " + repo_path, branch_name)
+    return
+
     # Reference: https://developer.github.com/v3/pulls/
     r = requests.post(
         "https://api.github.com/repos/" + repo_path + "/pulls",
@@ -70,20 +71,26 @@ def create_pull_request(repo_path, token, title, branch_name):
     )
 
 
-update_package(repo, package, oauth_token, *version)
 def update_package(repo, package, oauth_token, old_version, new_version):
     # We use the old version so we can get multiple updates in the same branch.
     branch_name = '-'.join([package, old_version])
 
-    print(">Updating %s to %s" % (package, version))
+    print(">Updating %s from %s to %s" % (package, old_version, new_version))
 
     # Create or checkout this branch.
+    # Delete the local branch.
+    try:
+        repo.run('branch', '-D', branch_name)
+    except RunError:
+        pass
     new_branch = False
     try:
-        repo.run('checkout', '-b', branch_name)
-        new_branch = True
+        # Attempt to get a remote branch with this name.
+        repo.run('checkout', '-b', branch_name,  'origin/' + branch_name)
     except RunError:
-        repo.run('checkout', branch_name)
+        # Otherwise, create a new branch.
+        new_branch = True
+        repo.run('checkout', '-b', branch_name, 'origin/master')
 
     # Rewrite each requirements file with the upgrade done.
     for req_file in REQUIREMENTFILES:
@@ -101,19 +108,24 @@ def update_package(repo, package, oauth_token, old_version, new_version):
             for line in requirements:
                 # Split the comment and the package.
                 location = line.find('#')
-                start = line[:location]
-                comment = line[location:]
+                if location == -1:
+                    start = line
+                    comment = ''
+                else:
+                    start = line[:location]
+                    comment = line[location:]
 
                 # Don't touch anything if it is to be skipped or the package
                 # doesn't match.
                 if package in start and 'skip' not in comment:
                     # Rebuild the line.
-                    package.replace(old_version, new_version)
+                    line = start.replace(old_version, new_version)
 
-                    # Try to keep the comment in the same location. (Always keep
-                    # at least one space.)
-                    spaces_count = max(location - len(package), 1)
-                    line = package.rstrip(' ') + ' ' * spaces_count + comment
+                    if comment:
+                        # Try to keep the comment in the same location. (Always keep
+                        # at least one space.)
+                        spaces_count = max(location - len(line.rstrip(' ')), 1)
+                        line += ' ' * spaces_count + comment + '\n'
 
                 # Write the line back out to the file.
                 f.write(line)
@@ -140,7 +152,7 @@ def update_package(repo, package, oauth_token, old_version, new_version):
                             branch_name)
 
     # Clean up.
-    git('--git-dir=' + repo_directory, 'checkout', 'master')
+    repo.run('checkout', 'master')
 
 
 def update_repository(root_path, repo_path, oauth_token):
@@ -163,24 +175,33 @@ def update_repository(root_path, repo_path, oauth_token):
         # Get every outdated package in each file using piprot, skipping the
         # last line that looks like "Your requirements are 560 days out of
         # date" (there should be an argument to disable that...)
-        result = run('piprot', '-q', '-o', req_file_path)
+        proc = Popen(['piprot', '-o', req_file_path], stdout=PIPE, stderr=PIPE)
+        proc.wait()
+        if proc.returncode is 0:
+            # piprot returns 1 if requirements are out of date.
+            continue
+        result = proc.stdout.read()
 
         # Remove useless lines.
         updates = {}
-        for line in result.split('\r\n'):
+        for line in result.split('\n'):
+            # Skip blank lines.
+            if not line:
+                continue
+
             # If the message isn't the standard one, skip it.
-            if 'out of date' not in line:
+            if 'out of date. Latest is' not in line:
                 if 'Your requirements are' not in line:
-                    print("Got unexpected message: \"%s\". Skipping" % line)
+                    print("Got unexpected message: \"%s\". Skipping." % line)
                 continue
 
             parts = line.split(' ')
             package = parts[0]
-            old_version = parts[1]
-            new_version = parts[11]
+            old_version = parts[1].lstrip('(').rstrip(')')
+            new_version = parts[10].lstrip('(').rstrip(')')
 
-            if not package or not version:
-                print("Something has gone wrong with line \"%s\". Skipping" % line)
+            if not package or not old_version or not new_version:
+                print("Something has gone wrong with line \"%s\". Skipping." % line)
                 continue
             
             updates[package] = (old_version, new_version)
