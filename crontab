@@ -10,7 +10,7 @@ TASKROOT=/opt/strongjobs/jobs
 WRAPPER=/opt/strongjobs/slackwrapper.sh
 
 # Run update-python-dependencies every 6 hours
-0 */6 * * * $WRAPPER fail "Python dependencies" $TASKROOT/update-dependencies/update-python-dependencies.sh
+0 */6 * * * $WRAPPER fail "Python dependencies" $TASKROOT/update-dependencies/update-python-dependencies.py
 
 # Run cert expiry checker one a day
 0 0 * * * $WRAPPER fail "Certificate Expiration" $TASKROOT/sslcheck/certexpiry.py

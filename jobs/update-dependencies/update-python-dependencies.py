@@ -4,9 +4,14 @@
 # but not in the requirements files (which shouldn't happen unless you update
 # the packages manually)
 
+import json
 import os
 from os import environ as env, path
+import re
 from subprocess import PIPE, Popen
+
+import requests
+
 
 REQUIREMENTFILES = [
     "requirements.txt",
@@ -46,23 +51,28 @@ class GitRepo(object):
         self.run('reset', '--hard')
         self.run('checkout', 'master')
         self.run('pull')
+
+        # Clean-up upstream branches.
         self.run('remote', 'prune', 'origin')
+
+        # Delete all local branches (to get a pristine state).
+        branches = self.run('branch')
+        branches = [branch[2:] for branch in branches.split('\n') if branch and branch[2:] != 'master']
+        if branches:
+            self.run('branch', '-D', *branches)
 
 
 def create_pull_request(repo_path, token, title, branch_name):
     """Create a Pull Request."""
-    print("FOO " + repo_path, branch_name)
-    return
-
     # Reference: https://developer.github.com/v3/pulls/
     r = requests.post(
         "https://api.github.com/repos/" + repo_path + "/pulls",
-        data={
+        data=json.dumps({
             "title": title,
             "body": "auto-generated",
             "head": branch_name,
             "base": "master"
-        },
+        }),
         headers={
             "Authorization": "token " + token,
             "Accept": "application/vnd.github.v3+json",
@@ -70,19 +80,17 @@ def create_pull_request(repo_path, token, title, branch_name):
         }
     )
 
+    if r.status_code != 201:
+        raise RuntimeError("Unable to make pull requests for repo '%s', branch '%s'" % (repo_path, branch_name))
+
 
 def update_package(repo, package, oauth_token, old_version, new_version):
     # We use the old version so we can get multiple updates in the same branch.
     branch_name = '-'.join([package, old_version])
 
-    print(">Updating %s from %s to %s" % (package, old_version, new_version))
+    print(">> Updating %s from %s to %s" % (package, old_version, new_version))
 
     # Create or checkout this branch.
-    # Delete the local branch.
-    try:
-        repo.run('branch', '-D', branch_name)
-    except RunError:
-        pass
     new_branch = False
     try:
         # Attempt to get a remote branch with this name.
@@ -106,32 +114,43 @@ def update_package(repo, package, oauth_token, old_version, new_version):
         # Now re-open the file and change any lines that have this on it.
         with open(req_file_path, 'w') as f:
             for line in requirements:
-                # Split the comment and the package.
-                location = line.find('#')
-                if location == -1:
-                    start = line
-                    comment = ''
+                # Split the line into a few parts.
+                start, end = re.match(r'^(.*)([\r\n]+)$', line).groups()
+                parts = start.split('#', 1)
+                start = parts[0]
+                if len(parts) == 2:
+                    comment = parts[1]
                 else:
-                    start = line[:location]
-                    comment = line[location:]
+                    comment = None
 
                 # Don't touch anything if it is to be skipped or the package
                 # doesn't match.
-                if package in start and 'skip' not in comment:
-                    # Rebuild the line.
-                    line = start.replace(old_version, new_version)
+                if package in start and (comment is None or 'skip' not in comment):
+                    # Rebuild the line. See PEP 508 for the list of version comparisons.
+                    package, cmp, version = re.split(r'([<>]=?|[!=~]=|===)', start)
+                    line = start.replace(version, new_version)
 
-                    if comment:
+                    if comment is not None:
                         # Try to keep the comment in the same location. (Always keep
                         # at least one space.)
-                        spaces_count = max(location - len(line.rstrip(' ')), 1)
-                        line += ' ' * spaces_count + comment + '\n'
+                        line = line.rstrip(' ')
+                        spaces_count = max(len(start) - len(line), 1)
+                        line += ' ' * spaces_count + '#' + comment
+
+                    # Add back the line ending.
+                    line += end
 
                 # Write the line back out to the file.
                 f.write(line)
 
         # Add the file.
         repo.run('add', req_file_path)
+
+    # Check if anything has changed.
+    result = repo.run('status', '--porcelain')
+    if not result:
+        # Note that this will leave a branch with no changes on it.
+        return
 
     # Commit the changes.
     repo.run('commit', '-m', 'Update %s to %s.' % (package, new_version))
@@ -156,12 +175,12 @@ def update_package(repo, package, oauth_token, old_version, new_version):
 
 
 def update_repository(root_path, repo_path, oauth_token):
-    print(">>>Updating %s" % repo_path)
+    print("Updating requirements for %s" % repo_path)
 
     repo = GitRepo(root_path, repo_path)
 
     # Make sure everything is nice and up to date
-    #repo.update()
+    repo.update()
 
     # Check for out of date packages in each file.
     updates = {}
@@ -170,7 +189,7 @@ def update_repository(root_path, repo_path, oauth_token):
         req_file_path = path.join(repo.directory, req_file)
         if not path.exists(req_file_path):
             continue
-        print(">>Updating %s" % req_file)
+        print("> Checking requirements in %s" % req_file)
 
         # Get every outdated package in each file using piprot, skipping the
         # last line that looks like "Your requirements are 560 days out of
@@ -206,9 +225,9 @@ def update_repository(root_path, repo_path, oauth_token):
             
             updates[package] = (old_version, new_version)
 
-        # Now update each package.
-        for package, version in updates.items():
-            update_package(repo, package, oauth_token, *version)
+    # Now update each package.
+    for package, version in updates.items():
+        update_package(repo, package, oauth_token, *version)
 
 
 def main():
