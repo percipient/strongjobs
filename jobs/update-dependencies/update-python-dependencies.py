@@ -127,18 +127,23 @@ def update_package(repo, package, oauth_token, old_version, new_version):
                 # doesn't match.
                 if package in start and (comment is None or 'skip' not in comment):
                     # Rebuild the line. See PEP 508 for the list of version comparisons.
-                    package, cmp, version = re.split(r'([<>]=?|[!=~]=|===)', start)
-                    line = start.replace(version, new_version)
+                    try:
+                        package, cmp, version = re.split(r'([<>]=?|[!=~]=|===)', start)
+                    except ValueError:
+                        # A bare package without a version.
+                        pass
+                    else:
+                        line = start.replace(version, new_version)
 
-                    if comment is not None:
-                        # Try to keep the comment in the same location. (Always keep
-                        # at least one space.)
-                        line = line.rstrip(' ')
-                        spaces_count = max(len(start) - len(line), 1)
-                        line += ' ' * spaces_count + '#' + comment
+                        if comment is not None:
+                            # Try to keep the comment in the same location. (Always keep
+                            # at least one space.)
+                            line = line.rstrip(' ')
+                            spaces_count = max(len(start) - len(line), 1)
+                            line += ' ' * spaces_count + '#' + comment
 
-                    # Add back the line ending.
-                    line += end
+                        # Add back the line ending.
+                        line += end
 
                 # Write the line back out to the file.
                 f.write(line)
