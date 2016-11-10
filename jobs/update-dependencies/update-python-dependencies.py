@@ -123,27 +123,28 @@ def update_package(repo, package, oauth_token, old_version, new_version):
                 else:
                     comment = None
 
+                # Split the line into package and version. See PEP 508 for the list of version comparisons.
+                try:
+                    temp_package, cmp, version = re.split(r'([<>]=?|[!=~]=|===)', start)
+                except ValueError:
+                    # A bare package without a version.
+                    temp_package = ''
+
                 # Don't touch anything if it is to be skipped or the package
                 # doesn't match.
-                if package in start and (comment is None or 'skip' not in comment):
-                    # Rebuild the line. See PEP 508 for the list of version comparisons.
-                    try:
-                        package, cmp, version = re.split(r'([<>]=?|[!=~]=|===)', start)
-                    except ValueError:
-                        # A bare package without a version.
-                        pass
-                    else:
-                        line = start.replace(version, new_version)
+                if temp_package.lower() == package.lower() and (comment is None or 'skip' not in comment):
+                    # Rebuild the line.
+                    line = start.replace(version, new_version)
 
-                        if comment is not None:
-                            # Try to keep the comment in the same location. (Always keep
-                            # at least one space.)
-                            line = line.rstrip(' ')
-                            spaces_count = max(len(start) - len(line), 1)
-                            line += ' ' * spaces_count + '#' + comment
+                    if comment is not None:
+                        # Try to keep the comment in the same location. (Always keep
+                        # at least one space.)
+                        line = line.rstrip(' ')
+                        spaces_count = max(len(start) - len(line), 1)
+                        line += ' ' * spaces_count + '#' + comment
 
-                        # Add back the line ending.
-                        line += end
+                    # Add back the line ending.
+                    line += end
 
                 # Write the line back out to the file.
                 f.write(line)
