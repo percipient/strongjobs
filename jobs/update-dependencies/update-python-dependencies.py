@@ -222,7 +222,7 @@ def update_repository(root_path, repo_path, oauth_token):
             parts = line.split(' ')
             package = parts[0]
             old_version = parts[1].lstrip('(').rstrip(')')
-            new_version = parts[10].lstrip('(').rstrip(')')
+            new_version = parts[-1]
 
             if not package or not old_version or not new_version:
                 print("Something has gone wrong with line \"%s\". Skipping." % line)
