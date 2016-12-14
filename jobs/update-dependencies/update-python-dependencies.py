@@ -208,7 +208,6 @@ def update_repository(root_path, repo_path, oauth_token):
         result = proc.stdout.read()
 
         # Remove useless lines.
-        updates = {}
         for line in result.split('\n'):
             # Skip blank lines.
             if not line:
