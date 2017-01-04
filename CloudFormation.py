@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from datetime import datetime
+from os.path import getmtime
 
 import awacs.aws as aws
 import awacs.sts as sts
@@ -27,7 +28,7 @@ t = Template()
 t.add_description("CloudFormation template for Strongarm Cronjob setup")
 t.add_metadata({
     "Comments": "Made with troposphere",
-    "LastUpdated": datetime.now().strftime('%Y-%m-%d'),
+    "LastUpdated": datetime.utcfromtimestamp(getmtime(__file__)).strftime('%Y-%m-%d %H:%M:%SZ'),
     "Version": "V0.1",
 })
 
