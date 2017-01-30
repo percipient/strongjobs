@@ -5,7 +5,7 @@ boto3==1.4.4
 
 # CloudFormation generation
 awacs==0.6.1
-troposphere==1.9.1
+troposphere==1.9.2
 
 # Management tasks
 invoke==0.14.0
