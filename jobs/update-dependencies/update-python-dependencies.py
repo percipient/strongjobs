@@ -76,7 +76,7 @@ def create_pull_request(repo_path, token, title, branch_name):
         headers={
             "Authorization": "token " + token,
             "Accept": "application/vnd.github.v3+json",
-            "Content-Type":"application/json"
+            "Content-Type": "application/json"
         }
     )
 
@@ -227,7 +227,7 @@ def update_repository(root_path, repo_path, oauth_token):
             if not package or not old_version or not new_version:
                 print("Something has gone wrong with line \"%s\". Skipping." % line)
                 continue
-            
+
             updates[package] = (old_version, new_version)
 
     # Now update each package.
