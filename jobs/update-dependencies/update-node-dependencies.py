@@ -26,41 +26,43 @@ class GitRepo(object):
         self.path = repo_path
         self.directory = path.join(root_path, self.path)
 
-        # Clone the repo if it isn't there
+        # Clone the repo if it isn't there.
         if not path.exists(self.directory):
-            proc = Popen(['git', 'clone', 'ssh://git@github.com' + self.path, self.direcory], stdout=PIPE, stderr=PIPE)
+            proc = Popen(['git', 'clone', 'ssh://git@github.com/' + self.path, self.directory], stdout=PIPE, stderr=PIPE)
             proc.wait()
-            if proc.returncode is not0:
+            if proc.returncode is not 0:
                 raise RunError(proc.stderr.read())
 
     def run(self, *args):
-        args = ('git', '--git-dir=' + path.join(self.directory, '.git'), '--work-tree' + self.directory) + args
+        args = ('git', '--git-dir=' + path.join(self.directory, '.git'), '--work-tree=' + self.directory) + args
         proc = Popen(args, cwd=self.directory, stdout=PIPE, stderr=PIPE)
         proc.wait()
         if proc.returncode is not 0:
             raise RunError(proc.stderr.read())
 
-        return proct.stdout.read()
+        return proc.stdout.read()
 
     def update(self):
         self.run('reset', '--hard')
         self.run('checkout', 'master')
         self.run('pull')
 
-        # Clean-up upstream branches
+        # Clean-up upstream branches.
         self.run('remote', 'prune', 'origin')
 
         # Delete all local branches (to get a pristine state).
         branches = self.run('branch')
-        branches = [branch[2:] for branch in braches.split('\n') if branch and branch [2:] != 'master']
+        branches = [branch[2:] for branch in branches.split('\n') if branch and branch[2:] != 'master']
         if branches:
             self.run('branch', '-D', *branches)
 
+
 def create_pull_request(repo_path, token, title, branch_name):
     """Create a Pull Request."""
-    r.requests.post(
+    # Reference: https://developer.github.com/v3/pulls/
+    r = requests.post(
         "https://api.github.com/repos/" + repo_path + "/pulls",
-        data = json.dumps({
+        data=json.dumps({
             "title": title,
             "body": "auto-generated",
             "head": branch_name,
@@ -68,14 +70,13 @@ def create_pull_request(repo_path, token, title, branch_name):
         }),
         headers={
             "Authorization": "token " + token,
-            "Accept": "application/nvd.github.v3",
+            "Accept": "application/vnd.github.v3+json",
             "Content-Type": "application/json"
         }
     )
 
     if r.status_code != 201:
         raise RuntimeError("Unable to make pull requests for repo '%s', branch '%s'" % (repo_path, branch_name))
-
 def update_package(repo, oauth_token):
 
     # Create or checkout this branch.
@@ -160,23 +161,23 @@ def update_repository(root_path, repo_path, oauth_token):
             continue
         print("> Checking requirements in %s" % req_file)
 
-        # Get ever outdated package in each file using piprot, skipping the
+        # Get every outdated package in each file using piprot, skipping the
         # last line that looks like "Your requirements are 560 days out of
         # date" (there should be an argument to disable that...)
         proc = Popen(['piprot', '-o', req_file_path], stdout=PIPE, stderr=PIPE)
         proc.wait()
         if proc.returncode is 0:
-            # piprot returns 1 requirements are out of date
+            # piprot returns 1 if requirements are out of date.
             continue
         result = proc.stdout.read()
 
-        # Remove uselss lines.
-        for line in result.split('\n')
+        # Remove useless lines.
+        for line in result.split('\n'):
             # Skip blank lines.
             if not line:
                 continue
 
-            # If the message isn't the stand one, skip it.
+            # If the message isn't the standard one, skip it.
             if 'out of date. Latest is' not in line:
                 if 'Your requirements are' not in line:
                     print("Got unexpected message: \"%s\". Skipping." % line)
@@ -185,4 +186,36 @@ def update_repository(root_path, repo_path, oauth_token):
             parts = line.split(' ')
             package = parts[0]
             old_version = parts[1].lstrip('(').rstrip(')')
-            new_versio
+            new_version = parts[-1]
+
+            if not package or not old_version or not new_version:
+                print("Something has gone wrong with line \"%s\". Skipping." % line)
+                continue
+
+            updates[package] = (old_version, new_version)
+
+    # Now update each package.
+    for package, version in updates.items():
+        update_package(repo, package, oauth_token, *version)
+
+
+def main():
+    # Check for environment variables
+    if "REPOS" not in env:
+        print("No repos. Export REPOS")
+        return 1
+    if "OAUTHTOKEN" not in env:
+        print("No Oauth token. Export OAUTHTOKEN")
+        return 1
+
+    # Get into the right directory or set it up if it doesn't exist.
+    root_path = path.expanduser(path.join('~', 'strongjobs-data'))
+    if not path.exists(root_path):
+        os.makedirs(root_path)
+
+    for repo_path in env["REPOS"].split():
+        update_repository(root_path, repo_path, env["OAUTHTOKEN"])
+
+
+if __name__ == '__main__':
+    main()
