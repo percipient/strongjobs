@@ -1,82 +1,18 @@
 #!/usr/bin/env python
 
-# Note: this will not check to see if packages on the system are different
-# versions than those specified within the requirements files (which shouldn't
-# happen unless you update the packages manually).
-
 import json
 import os
 from os import environ as env, path
 import re
 from subprocess import PIPE, Popen
 
-import requests
+from git import GitRepo
+from github import create_pull_request
 
 
-REQUIREMENTFILES = {
-    "package.json",
-}
-
-class RunError(RuntimeError):
-    pass
+PACKAGE_FILE = "package.json"
 
 
-class GitRepo(object):
-    def __init__(self, root_path, repo_path):
-        self.path = repo_path
-        self.directory = path.join(root_path, self.path)
-
-        # Clone the repo if it isn't there.
-        if not path.exists(self.directory):
-            proc = Popen(['git', 'clone', 'ssh://git@github.com/' + self.path, self.directory], stdout=PIPE, stderr=PIPE)
-            proc.wait()
-            if proc.returncode is not 0:
-                raise RunError(proc.stderr.read())
-
-    def run(self, *args):
-        args = ('git', '--git-dir=' + path.join(self.directory, '.git'), '--work-tree=' + self.directory) + args
-        proc = Popen(args, cwd=self.directory, stdout=PIPE, stderr=PIPE)
-        proc.wait()
-        if proc.returncode is not 0:
-            raise RunError(proc.stderr.read())
-
-        return proc.stdout.read()
-
-    def update(self):
-        self.run('reset', '--hard')
-        self.run('checkout', 'master')
-        self.run('pull')
-
-        # Clean-up upstream branches.
-        self.run('remote', 'prune', 'origin')
-
-        # Delete all local branches (to get a pristine state).
-        branches = self.run('branch')
-        branches = [branch[2:] for branch in branches.split('\n') if branch and branch[2:] != 'master']
-        if branches:
-            self.run('branch', '-D', *branches)
-
-
-def create_pull_request(repo_path, token, title, branch_name):
-    """Create a Pull Request."""
-    # Reference: https://developer.github.com/v3/pulls/
-    r = requests.post(
-        "https://api.github.com/repos/" + repo_path + "/pulls",
-        data=json.dumps({
-            "title": title,
-            "body": "auto-generated",
-            "head": branch_name,
-            "base": "master"
-        }),
-        headers={
-            "Authorization": "token " + token,
-            "Accept": "application/vnd.github.v3+json",
-            "Content-Type": "application/json"
-        }
-    )
-
-    if r.status_code != 201:
-        raise RuntimeError("Unable to make pull requests for repo '%s', branch '%s'" % (repo_path, branch_name))
 def update_package(repo, oauth_token):
 
     # Create or checkout this branch.
@@ -144,6 +80,7 @@ def update_package(repo, oauth_token):
     # Clean up.
     repo.run('checkout', 'master')
 
+
 def update_repository(root_path, repo_path, oauth_token):
     print("Updating requirements for %s" % repo_path)
 
@@ -152,50 +89,19 @@ def update_repository(root_path, repo_path, oauth_token):
     # Make sure everything is nice and up to date
     repo.update()
 
-    # Check for out of date packages in each file.
-    updates = {}
-    for req_file in REQUIREMENTFILES:
-        # Skip files that don't exist.
-        req_file_path = path.join(repo.directory, req_file)
-        if not path.exists(req_file_path):
-            continue
-        print("> Checking requirements in %s" % req_file)
+    # Get every outdated package using npm.
+    # TODO Has to be run
+    proc = Popen(['npm', 'outdated'], stdout=PIPE, stderr=PIPE)
+    proc.wait()
+    if proc.returncode is 0:
+        # npm outdated returns 1 if requirements are out of date.
+        return
+    result = proc.stdout.read()
 
-        # Get every outdated package in each file using piprot, skipping the
-        # last line that looks like "Your requirements are 560 days out of
-        # date" (there should be an argument to disable that...)
-        proc = Popen(['piprot', '-o', req_file_path], stdout=PIPE, stderr=PIPE)
-        proc.wait()
-        if proc.returncode is 0:
-            # piprot returns 1 if requirements are out of date.
-            continue
-        result = proc.stdout.read()
+    # The first line is the column titles.
+    for line in result.split('\n')[1:]:
+        package, current_version, wanted_version, latest_version = line.split()
 
-        # Remove useless lines.
-        for line in result.split('\n'):
-            # Skip blank lines.
-            if not line:
-                continue
-
-            # If the message isn't the standard one, skip it.
-            if 'out of date. Latest is' not in line:
-                if 'Your requirements are' not in line:
-                    print("Got unexpected message: \"%s\". Skipping." % line)
-                continue
-
-            parts = line.split(' ')
-            package = parts[0]
-            old_version = parts[1].lstrip('(').rstrip(')')
-            new_version = parts[-1]
-
-            if not package or not old_version or not new_version:
-                print("Something has gone wrong with line \"%s\". Skipping." % line)
-                continue
-
-            updates[package] = (old_version, new_version)
-
-    # Now update each package.
-    for package, version in updates.items():
         update_package(repo, package, oauth_token, *version)
 
 

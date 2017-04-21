@@ -1,8 +1,25 @@
 #!/usr/bin/env python
+"""
+Check a set of requirements files to see if the packages are outdated. If an
+outdated package is found, update it in all requirements files and create a Pull
+Request to the GitHub repository.
 
-# Note: this will not check to see if packages are up to date on the system,
-# but not in the requirements files (which shouldn't happen unless you update
-# the packages manually)
+Internally this uses piprot to decide if a requirement is out of date. It
+(oddly) iterates all requirements files multiple times:
+
+1. The first finds all outdated dependencies (across all files).
+2. Each outdated dependency is then iterated over and updated in all files at once.
+3. A separate Pull Request is made for each depency and the branch is named on
+  the current version, thus if the package is updated multiple times before the
+  branch is merged, additional commits will be added to the same branch.
+
+Some notes:
+
+* Delete your branches after merging pull requests.
+* Care is taken to perserve spacing and comments on the same line as dependencies.
+* "skip" can be added to a line to ignore dependency checking.
+
+"""
 
 import json
 import os
@@ -10,10 +27,11 @@ from os import environ as env, path
 import re
 from subprocess import PIPE, Popen
 
-import requests
+from git import GitRepo
+from github import create_pull_request
 
 
-REQUIREMENTFILES = [
+REQUIREMENTS_FILES = [
     "requirements.txt",
     "debug-requirements.txt",
     "dev-requirements.txt",
@@ -21,67 +39,6 @@ REQUIREMENTFILES = [
     "requirements-debug.txt",
     "requirements-base.txt",
 ]
-
-class RunError(RuntimeError):
-    pass
-
-
-class GitRepo(object):
-    def __init__(self, root_path, repo_path):
-        self.path = repo_path
-        self.directory = path.join(root_path, self.path)
-
-        # Clone the repo if it isn't there.
-        if not path.exists(self.directory):
-            proc = Popen(['git', 'clone', 'ssh://git@github.com/' + self.path, self.directory], stdout=PIPE, stderr=PIPE)
-            proc.wait()
-            if proc.returncode is not 0:
-                raise RunError(proc.stderr.read())
-
-    def run(self, *args):
-        args = ('git', '--git-dir=' + path.join(self.directory, '.git'), '--work-tree=' + self.directory) + args
-        proc = Popen(args, cwd=self.directory, stdout=PIPE, stderr=PIPE)
-        proc.wait()
-        if proc.returncode is not 0:
-            raise RunError(proc.stderr.read())
-
-        return proc.stdout.read()
-
-    def update(self):
-        self.run('reset', '--hard')
-        self.run('checkout', 'master')
-        self.run('pull')
-
-        # Clean-up upstream branches.
-        self.run('remote', 'prune', 'origin')
-
-        # Delete all local branches (to get a pristine state).
-        branches = self.run('branch')
-        branches = [branch[2:] for branch in branches.split('\n') if branch and branch[2:] != 'master']
-        if branches:
-            self.run('branch', '-D', *branches)
-
-
-def create_pull_request(repo_path, token, title, branch_name):
-    """Create a Pull Request."""
-    # Reference: https://developer.github.com/v3/pulls/
-    r = requests.post(
-        "https://api.github.com/repos/" + repo_path + "/pulls",
-        data=json.dumps({
-            "title": title,
-            "body": "auto-generated",
-            "head": branch_name,
-            "base": "master"
-        }),
-        headers={
-            "Authorization": "token " + token,
-            "Accept": "application/vnd.github.v3+json",
-            "Content-Type": "application/json"
-        }
-    )
-
-    if r.status_code != 201:
-        raise RuntimeError("Unable to make pull requests for repo '%s', branch '%s'" % (repo_path, branch_name))
 
 
 def update_package(repo, package, oauth_token, old_version, new_version):
@@ -101,7 +58,7 @@ def update_package(repo, package, oauth_token, old_version, new_version):
         repo.run('checkout', '-b', branch_name, 'origin/master')
 
     # Rewrite each requirements file with the upgrade done.
-    for req_file in REQUIREMENTFILES:
+    for req_file in REQUIREMENTS_FILES:
         # Skip files that don't exist.
         req_file_path = path.join(repo.directory, req_file)
         if not path.exists(req_file_path):
@@ -190,7 +147,7 @@ def update_repository(root_path, repo_path, oauth_token):
 
     # Check for out of date packages in each file.
     updates = {}
-    for req_file in REQUIREMENTFILES:
+    for req_file in REQUIREMENTS_FILES:
         # Skip files that don't exist.
         req_file_path = path.join(repo.directory, req_file)
         if not path.exists(req_file_path):
