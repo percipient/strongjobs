@@ -49,7 +49,7 @@ def npm_outdated(req_file_path):
     package_updates = {}
     for line in result.split('\n')[1:-1]:
         # "Current" version is what's installed, "wanted" is what's in the file.
-        # Nowhere does this machine install these dependencies thoug, so
+        # Nowhere does this machine install these dependencies though, so
         # current_version should always be the string "MISSING".
         package, current_version, wanted_version, latest_version = line.split()
         package_updates[package] = (wanted_version, latest_version)
