@@ -30,7 +30,7 @@ def update_package_json(req_file_path, package, old_version, new_version):
     if original_json != package_json:
         with open(req_file_path, 'w') as f:
             # Try to keep the same indentation.
-            json.dump(package_json, f, indent=4, separators=(',', ': '))
+            json.dump(package_json, f, indent=2, separators=(',', ': '))
             # End with a trailing blank line.
             f.write('\n')
 
