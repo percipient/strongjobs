@@ -5,6 +5,10 @@ apt-get update
 apt-get -y upgrade
 apt-get -y install git curl python python-pip libffi-dev libssl-dev python-dev
 
+# Install a newer version of node than what's available in the ubuntu repos.
+curl -sL https://deb.nodesource.com/setup_6.x | bash -
+apt-get install nodejs
+
 # Create user and home dir (/home/strongjobs/)
 useradd -m -G adm strongjobs || true
 
