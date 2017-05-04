@@ -40,9 +40,7 @@ def npm_outdated(req_file_path):
     req_dir = path.dirname(req_file_path)
     proc = Popen(['npm', 'outdated'], stdout=PIPE, stderr=PIPE, cwd=req_dir)
     proc.wait()
-    if proc.returncode is 0:
-        # npm outdated returns 1 if requirements are out of date.
-        return {}
+    # Node seems to sometimes return code 0 even when there are updates.
     result = proc.stdout.read()
 
     # The first line is the column titles, the last is blank.
