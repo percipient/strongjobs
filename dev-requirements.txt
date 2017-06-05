@@ -8,4 +8,4 @@ awacs==0.6.2
 troposphere==1.9.3
 
 # Management tasks
-invoke==0.17.0
+invoke==0.18.0
