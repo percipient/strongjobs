@@ -5,7 +5,7 @@ from collections import OrderedDict
 import json
 import os
 from os import environ as env, path
-from subprocess import PIPE, Popen
+from subprocess import check_output, PIPE, Popen
 
 from git import GitRepo
 from update_dependencies import get_package_updates, update_packages
@@ -38,6 +38,12 @@ def update_package_json(req_file_path, package, old_version, new_version):
 def npm_outdated(req_file_path):
     # Get every outdated package using npm.
     req_dir = path.dirname(req_file_path)
+
+    # npm is dumb and needs the packages actually installed before checking if
+    # they're out of date.
+    proc = check_output(['npm', 'install'], cwd=req_dir)
+
+    # Now actually check for outdated packages.
     proc = Popen(['npm', 'outdated'], stdout=PIPE, stderr=PIPE, cwd=req_dir)
     proc.wait()
     # Node seems to sometimes return code 0 even when there are updates.
