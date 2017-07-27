@@ -36,7 +36,7 @@ def update_package(repo, files, oauth_token, package, old_version, new_version, 
         repo.run('add', req_file_path)
 
     # Check if anything has changed.
-    result = repo.run('status', '--porcelain')
+    result = repo.run('status', '--porcelain', '--untracked-files=no')
     if not result:
         # Note that this will leave a branch with no changes on it.
         return
