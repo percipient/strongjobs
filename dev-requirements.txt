@@ -4,7 +4,7 @@
 boto3==1.4.4
 
 # CloudFormation generation
-awacs==0.6.2
+awacs==0.7.0
 troposphere==1.9.4
 
 # Management tasks
