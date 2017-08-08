@@ -2,9 +2,9 @@
 
 from __future__ import absolute_import
 
+import datetime
 from os import environ as env
 import socket
-import datetime
 
 from OpenSSL import SSL
 

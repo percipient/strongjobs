@@ -5,7 +5,8 @@ from time import sleep
 
 import boto3
 from botocore.exceptions import NoRegionError
-from invoke import run, task, Collection
+
+from invoke import Collection, run, task
 
 
 # Utility functions
@@ -79,6 +80,7 @@ def deploy(ctx, region=None, repo="percipient/strongjobs", commitId=None, wait=T
         print("\nDeploy Failed")
         print(info)
 
+
 ns = Collection(clean, deploy)
 
 
@@ -86,7 +88,7 @@ ns = Collection(clean, deploy)
 @task(pre=[clean])
 def makeTemplate(ctx):
     """Make CloudFormation template."""
-    import CloudFormation  # pylint: disable=unused-import
+    import CloudFormation  # noqa
 
 
 @task(pre=[makeTemplate])
@@ -166,7 +168,7 @@ def update(ctx, region=None, subnetId=None, securityGroup="sg-51530134", wait=Tr
                 # Invalid input for parameter key subnetId. Cannot specify
                 # usePreviousValue as true for a parameter key not in the
                 # previous template" FIXME
-                #'UsePreviousValue': True
+                # 'UsePreviousValue': True
             },
         ],
     )
@@ -175,6 +177,7 @@ def update(ctx, region=None, subnetId=None, securityGroup="sg-51530134", wait=Tr
     waiter = cf.get_waiter('stack_create_complete')
     waiter.wait(StackName=stackId)
     print("CloudFormation update completed")
+
 
 cfCollection = Collection("cf", makeTemplate, create, update)
 ns.add_collection(cfCollection)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-from copy import deepcopy
 from collections import OrderedDict
+from copy import deepcopy
 import json
 import os
 from os import environ as env, path

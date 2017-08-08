@@ -9,3 +9,7 @@ troposphere==1.9.4
 
 # Management tasks
 invoke==0.18.0
+
+# For syntax checking / static analysis.
+flake8==3.3.0
+flake8-import-order==0.12

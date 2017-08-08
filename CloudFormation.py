@@ -5,14 +5,15 @@ from os.path import getmtime
 
 import awacs.aws as aws
 import awacs.sts as sts
+
 from troposphere import (AWS_REGION,
                          AWS_STACK_NAME,
                          Base64,
+                         codedeploy,
                          Join,
                          Parameter,
                          Ref,
-                         Template,
-                         codedeploy,)
+                         Template)
 import troposphere.autoscaling as autoscaling
 from troposphere.constants import (IMAGE_ID,
                                    SECURITY_GROUP_ID,
@@ -46,9 +47,9 @@ imageId = t.add_parameter(Parameter(
     Description="The id of the AMI that should be used by these ASGs",
     Type=IMAGE_ID,
     ConstraintDescription="Ubuntu 64-bit is reasonable",
-    #Default="ami-b9ff39d9",  # Ubuntu 16 LTS--update when CodeDeploy in s3
-                              # catches up to git and fixes Ruby version
-                              # problems
+    # Ubuntu 16 LTS--update when CodeDeploy in s3 catches up to git and fixes
+    # Ruby version problems.
+    # Default="ami-b9ff39d9",
     Default="ami-65579105",  # Ubuntu 14 LTS
 ))
 subnetId = t.add_parameter(Parameter(

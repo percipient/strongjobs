@@ -1,0 +1,7 @@
+[flake8]
+#ignore = E121,E122,E126,E128,E131,E501,T003
+exclude =
+    .git
+max-line-length = 150
+#application-import-names =
+import-order-style = appnexus
