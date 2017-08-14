@@ -1,7 +1,7 @@
 # Requirements for deploying and managing from host machine
 
 # AWS commands
-boto3==1.4.5
+boto3==1.4.6
 
 # CloudFormation generation
 awacs==0.7.0
