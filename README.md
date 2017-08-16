@@ -4,6 +4,12 @@ strongjobs is Apache2 licensed software for engineering teams to schedule
 repetitive tasks in AWS. For example, monitoring dependency updates, certificate
 expiration, and more.
 
+## Deprecation notice
+
+Strongjobs is no longer being developed. A few issues with it were identified
+and were not fixable in the current state. Feel free to use this code as
+reference for developing more complete tooling for running periodic tasks.
+
 ## Background
 
 This repo is Strongarm's solution to a running a modern and easily updatable
