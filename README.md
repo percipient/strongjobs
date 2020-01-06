@@ -1,3 +1,5 @@
+STOP! The strongjobs project has been discontinued in the form of this repository. It is kept only as a reference.
+
 ## strongjobs
 
 strongjobs is Apache2 licensed software for engineering teams to schedule
